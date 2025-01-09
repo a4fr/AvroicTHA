@@ -11,7 +11,7 @@ KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'avroic')
 KAFKA_TOPIC_PARTITION = int(os.getenv('KAFKA_TOPIC_PARTITION', '4'))
 KAFKA_TOPIC_REPLICATION_FACTOR = int(os.getenv('KAFKA_TOPIC_REPLICATION_FACTOR', '1'))
-RANDOM_DATA_MAX_USERS = int(os.getenv('RANDOM_DATA_MAX_USERS', '1000'))
+RANDOM_DATA_MAX_USERS = int(os.getenv('RANDOM_DATA_MAX_USERS', '100'))
 RANDOM_DATA_MAX_ITEMS = int(os.getenv('RANDOM_DATA_MAX_ITEMS', '100'))
 PRODUCER_RATE = float(os.getenv('PRODUCER_RATE', '0.1'))
 
@@ -45,9 +45,9 @@ def create_topic():
     if KAFKA_TOPIC not in topic_list:
         new_topic = NewTopic(KAFKA_TOPIC, num_partitions=KAFKA_TOPIC_PARTITION, replication_factor=KAFKA_TOPIC_REPLICATION_FACTOR)
         admin.create_topics([new_topic])
-        print(f"Topic[{KAFKA_TOPIC}] created!")
+        print(f"TOPIC: {KAFKA_TOPIC} (Created!)")
     else:
-        print(f"Topic[{KAFKA_TOPIC}] already exists!")
+        print(f"TOPIC: {KAFKA_TOPIC} (Already Exists!)")
 
 
 def delivery_report(err, msg: Message):
@@ -97,5 +97,10 @@ def produce_messages():
 
 
 if __name__ == '__main__':
+    # Print Configs
+    print(f"RANDOM_DATA_MAX_USERS: {RANDOM_DATA_MAX_USERS}")
+    print(f"RANDOM_DATA_MAX_ITEMS: {RANDOM_DATA_MAX_ITEMS}")
+    print(f"KAFKA_BROKER: {PRODUCER_RATE}")
+
     create_topic()
     produce_messages()
