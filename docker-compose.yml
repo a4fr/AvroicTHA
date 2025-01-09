@@ -63,6 +63,25 @@ services:
     networks:
       - avroic
 
+  data-producer:
+    build:
+      context: ./01-DataProducer
+      dockerfile: Dockerfile
+    container_name: data-producer
+    depends_on:
+      - broker
+      - schema-registry
+    environment:
+      KAFKA_BROKER: broker:29092
+      KAFKA_TOPIC: avroic
+      KAFKA_TOPIC_PARTITION: 4
+      KAFKA_TOPIC_REPLICATION_FACTOR: 1
+      RANDOM_DATA_MAX_USERS: 100
+      RANDOM_DATA_MAX_ITEMS: 100
+      PRODUCER_RATE: 0.1
+    networks:
+      - avroic
+
 networks:
   avroic:
     driver: bridge
