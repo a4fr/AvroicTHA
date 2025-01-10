@@ -80,7 +80,7 @@ services:
       SPARK_SSL_ENABLED: no
       KAFKA_BROKER: broker:29092
       KAFKA_TOPIC: avroic
-      DEPLOY_MODE: cluster
+      DEPLOY_MODE: client
       SPARK_MASTER_URL: spark://spark-master:7077
       LOOP_SLEEP: 2
     ports:
