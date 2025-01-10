@@ -1,38 +1,41 @@
 import os
 import shutil
+import logging
 from time import sleep
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json, count, sum, avg
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configs for Hadoop in Windows
 HADOOP_HOME = os.getenv("HADOOP_HOME")
 if (not HADOOP_HOME) and (os.name == "nt"):
     os.environ["HADOOP_HOME"] = r"C:\winutils-master\hadoop-3.3.6"
     HADOOP_HOME = os.getenv("HADOOP_HOME")
-    os.environ["PATH"] = fr"{os.environ["PATH"]};{HADOOP_HOME}\bin"
-    print("Hadoop Native Libraries configured!")
+    os.environ["PATH"] = fr"{os.environ['PATH']};{HADOOP_HOME}\bin"
+    logging.info("Hadoop Native Libraries configured!")
 
 
 # Configs for Kafka
 KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "avroic")
-KAFKA_GROUP_ID = os.getenv("KAFKA_GROUP_ID", "spark-aggregator")
-DEPLOY_MODE = os.getenv("DEPLOY_MODE", "client")
 
 # Configs for Spark APP
 LOOP_SLEEP = int(os.getenv("LOOP_SLEEP", 2))
-
+DEPLOY_MODE = os.getenv("DEPLOY_MODE", "client")
 
 # Initialize SparkSession
+logging.info("Creating Spark Session...")
+logging.info(f"DEPLOY_MODE: {DEPLOY_MODE}")
 spark = SparkSession.builder \
     .appName("InteractionsAggregator") \
     .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
     .config("spark.sql.streaming.statefulOperator.checkCorrectness.enabled", "false") \
     .config("spark.submit.deployMode", DEPLOY_MODE) \
     .getOrCreate()
-print("Spark Session created")
+logging.info("Spark Session created")
 
 
 # Read from Kafka
@@ -45,10 +48,10 @@ df = spark.readStream \
 
 # Kafka messages Schema
 schema = StructType([
-    StructField('user_id', StringType()),
-    StructField('item_id', StringType()),
-    StructField('interaction_type', StringType()),
-    StructField('timestamp', TimestampType())
+    StructField("user_id", StringType()),
+    StructField("item_id", StringType()),
+    StructField("interaction_type", StringType()),
+    StructField("timestamp", TimestampType())
 ])
 
 # Remove old Checkpoint, Table files
@@ -63,7 +66,7 @@ interactions = df \
 interactions.writeStream \
     .option("checkpointLocation", "./spark-table-checkpoint/interactions") \
     .toTable("interactions")
-print("Reading from Kafka...")
+logging.info("Reading from Kafka...")
 
 def agg_interactions_user():
     global spark
@@ -99,7 +102,7 @@ def agg_interactions_user():
         .option("kafka.bootstrap.servers", KAFKA_BROKER) \
         .option("topic", f"{KAFKA_TOPIC}_aggregated") \
         .save()
-    print("Result of (agg_interactions_user) sent to Kafka!")
+    logging.info("Result of (agg_interactions_user) sent to Kafka!")
 
 
 def avg_interactions():
@@ -115,7 +118,7 @@ def avg_interactions():
         .option("kafka.bootstrap.servers", KAFKA_BROKER) \
         .option("topic", f"{KAFKA_TOPIC}_aggregated") \
         .save()
-    print("Result of (avg_interactions) sent to Kafka!")
+    logging.info("Result of (avg_interactions) sent to Kafka!")
 
 
 def agg_interactions_item():
@@ -142,7 +145,7 @@ def agg_interactions_item():
         .option("kafka.bootstrap.servers", KAFKA_BROKER) \
         .option("topic", f"{KAFKA_TOPIC}_aggregated") \
         .save()
-    print("Result of (agg_interactions_item) sent to Kafka!")
+    logging.info("Result of (agg_interactions_item) sent to Kafka!")
 
 
 
@@ -154,12 +157,12 @@ while True:
         # Check for new data
         new_index = spark.sql("select * from interactions").count()
         if new_index == LAST_ROW_INDEX:
-            print(f"No new data to process! Waiting... ({LOOP_SLEEP}s)")
+            logging.info(f"No new data to process! Waiting... ({LOOP_SLEEP}s)")
             sleep(LOOP_SLEEP)
             continue
 
         # Aggregations
-        print("Total Interactions:", new_index)
+        logging.info(f"Total Interactions: {new_index}")
         spark.sql("select * from interactions order by timestamp desc limit 1").show()
         LAST_ROW_INDEX = new_index
 
@@ -168,7 +171,7 @@ while True:
         agg_interactions_item()
 
     except KeyboardInterrupt:
-        print("Stopping Spark Job...")
+        logging.info("Stopping Spark Job...")
         break
 ###### MAIN LOOP ######
 spark.stop()
