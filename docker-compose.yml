@@ -29,21 +29,6 @@ services:
     networks:
       - avroic
 
-  schema-registry:
-    image: confluentinc/cp-schema-registry:7.8.0
-    hostname: schema-registry
-    container_name: schema-registry
-    depends_on:
-      - broker
-    ports:
-      - "8081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
-      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-    networks:
-      - avroic
-
   # https://github.com/kafbat/kafka-ui/blob/main/documentation/compose/kafbat-ui.yaml
   kafbat-ui:
     container_name: kafbat-ui
@@ -76,11 +61,40 @@ services:
       KAFKA_TOPIC: avroic
       KAFKA_TOPIC_PARTITION: 4
       KAFKA_TOPIC_REPLICATION_FACTOR: 1
-      RANDOM_DATA_MAX_USERS: 100
-      RANDOM_DATA_MAX_ITEMS: 100
-      PRODUCER_RATE: 0.1
+      RANDOM_DATA_MAX_USERS: 10
+      RANDOM_DATA_MAX_ITEMS: 10
+      PRODUCER_RATE: 1
     networks:
       - avroic
+
+  spark-master:
+    image: bitnami/spark:3.5.0
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "7077:7077"
+      - "8180:8080"
+    networks:
+      - avroic
+
+  spark-worker:
+    image: bitnami/spark:3.5.0
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_WORKER_CORES=1
+    depends_on:
+      - spark-master
+    networks:
+      - avroic
+    deploy:
+      replicas: 2
 
 networks:
   avroic:
