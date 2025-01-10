@@ -54,19 +54,22 @@ This component consumes aggregated messages from Kafka, stores them in Elasticse
 
 #### Data Mapper
 ```json
+```json
 {
-    'agg_interactions_item': {                      // define index
-        'id': 'item_id',                            // define which item is ID
-        'alerts': [('max_interactions', '>', 12)],  // list of defined alert
+    "agg_interactions_item": {                      // define index
+        "id": "item_id",                            // define which item is ID
+        "alerts": [("max_interactions", ">", 12)],  // list of defined alert
     },
-    'agg_interactions_user': {
-        'id': 'user_id',
-        'alerts': [('total_interactions', '>', 100),
-                   ('avg_interactions', '<', 40)],
+    "agg_interactions_user": {
+        "id": "user_id",
+        "alerts": [("total_interactions", ">", 100),
+                   ("avg_interactions", "<", 40)],
     },
-    'avg_interactions': {
-        'id': 'avg_interactions',
-    },
+    "avg_interactions": {
+        "id": "avg_interactions"
+    }
+}
+```
 }
 ```
 
