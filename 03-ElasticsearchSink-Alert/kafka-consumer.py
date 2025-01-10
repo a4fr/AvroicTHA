@@ -2,11 +2,15 @@ import os
 from confluent_kafka import Consumer, KafkaError
 from elasticsearch import Elasticsearch
 import json
+import logging
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Configs for Kafka
 KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'localhost:9092')
 KAFKA_TOPIC = os.getenv('KAFKA_TOPIC', 'avroic_aggregated')
-KAFKA_GROUP_ID = os.getenv('KAFKA_TOPIC', 'ElasticsearchSink-Alert')
+KAFKA_GROUP_ID = os.getenv('KAFKA_GROUP_ID', 'ElasticsearchSink-Alert')
 
 # Configs for Elasticsearch
 ES_HOST = os.getenv('ES_HOST', 'http://localhost:9200')
@@ -18,11 +22,11 @@ consumer = Consumer({
     'auto.offset.reset': 'earliest'
 })
 consumer.subscribe([KAFKA_TOPIC])
-print(f"Consuming messages from topic: {KAFKA_TOPIC}")
+logging.info(f"Consuming messages from topic: {KAFKA_TOPIC}")
 
 # Initialize Elasticsearch client
 es = Elasticsearch(ES_HOST)
-print(f"Connected to Elasticsearch: {ES_HOST}")
+logging.info(f"Connected to Elasticsearch: {ES_HOST}")
 
 # Data Mapper
 MAPPER = {
@@ -68,19 +72,20 @@ def is_it_alert(data: dict):
     """ Check alert from value
     """
     document = data['value']
-    alerts = MAPPER[data['index']]['alerts']
-    for alert in alerts:
-        alert_text = ' '.join([str(item) for item in alert])
-        key, op, value = alert
-        if op == '>':
-            if document[key] > value:
-                return True, alert_text
-        elif op == '<':
-            if document[key] < value:
-                return True, alert_text
-        elif op == '==':
-            if document[key] == value:
-                return True, alert_text
+    if 'alerts' in MAPPER[data['index']]:
+        alerts = MAPPER[data['index']]['alerts']
+        for alert in alerts:
+            alert_text = ' '.join([str(item) for item in alert])
+            key, op, value = alert
+            if op == '>':
+                if document[key] > value:
+                    return True, alert_text
+            elif op == '<':
+                if document[key] < value:
+                    return True, alert_text
+            elif op == '==':
+                if document[key] == value:
+                    return True, alert_text
     return False, 'No Alert'
 
 
@@ -92,7 +97,7 @@ def save_alert(data):
 
 if __name__ == "__main__":
     # Consume messages from Kafka and save to Elasticsearch
-    print("Polling messages from Kafka...")
+    logging.info("Polling messages from Kafka...")
     while True:
         msg = consumer.poll(1.0)
         if msg is None:
@@ -101,7 +106,7 @@ if __name__ == "__main__":
             if msg.error().code() == KafkaError._PARTITION_EOF:
                 continue
             else:
-                print(msg.error())
+                logging.error(msg.error())
                 break
         
         # Prepair Data
@@ -112,14 +117,14 @@ if __name__ == "__main__":
         data['id'] = extract_id_from_data(data)
 
         save_to_elasticsearch(data)
-        print(f"Saved to Elasticsearch: index={data['index']}, id={data['id']}")
+        logging.info(f"Saved to Elasticsearch: index={data['index']}, id={data['id']}")
 
         # Check Alert
         is_critical, alert_text = is_it_alert(data)
         if is_critical:
             data['alert_text'] = alert_text
             save_alert(data)
-            print(f"Saved to Elasticsearch: index=alerts, id={data['id']}, alert={alert_text}")
+            logging.info(f"Saved to Elasticsearch: index=alerts, id={data['id']}, alert={alert_text}")
 
-    print("Closing Kafka consumer...")
+    logging.info("Closing Kafka consumer...")
     consumer.close()
