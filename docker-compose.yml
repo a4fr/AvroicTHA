@@ -66,14 +66,23 @@ services:
       - avroic
 
   spark-master:
-    image: bitnami/spark:3.5.0
-    container_name: spark-master
+    build:
+      context: ./02-StreamProcessing
+      dockerfile: Dockerfile
+    container_name: spark-app
+    depends_on:
+      - broker
     environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
+      SPARK_MODE: master
+      SPARK_RPC_AUTHENTICATION_ENABLED: no
+      SPARK_RPC_ENCRYPTION_ENABLED: no
+      SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED: no
+      SPARK_SSL_ENABLED: no
+      KAFKA_BROKER: broker:29092
+      KAFKA_TOPIC: avroic
+      DEPLOY_MODE: cluster
+      SPARK_MASTER_URL: spark://spark-master:7077
+      LOOP_SLEEP: 2
     ports:
       - "7077:7077"
       - "8180:8080"
@@ -83,31 +92,16 @@ services:
   spark-worker:
     image: bitnami/spark:3.5.0
     environment:
-      - SPARK_MODE=worker
+      - SPARK_MODE=client
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=1G
-      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
     depends_on:
       - spark-master
     networks:
       - avroic
     deploy:
       replicas: 2
-
-  spark-app:
-    build:
-      context: ./02-StreamProcessing
-      dockerfile: Dockerfile
-    container_name: spark-app
-    depends_on:
-      - broker
-    environment:
-      KAFKA_BROKER: broker:29092
-      KAFKA_TOPIC: avroic
-      DEPLOY_MODE: client
-      LOOP_SLEEP: 2
-    networks:
-      - avroic
 
 networks:
   avroic:

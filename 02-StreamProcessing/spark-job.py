@@ -25,17 +25,29 @@ KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "avroic")
 # Configs for Spark APP
 LOOP_SLEEP = int(os.getenv("LOOP_SLEEP", 2))
 DEPLOY_MODE = os.getenv("DEPLOY_MODE", "client")
+SPARK_MASTER_URL = os.getenv("SPARK_MASTER_URL", "spark://localhost:7077")
 
 # Initialize SparkSession
 logging.info("Creating Spark Session...")
 logging.info(f"DEPLOY_MODE: {DEPLOY_MODE}")
-spark = SparkSession.builder \
-    .appName("InteractionsAggregator") \
-    .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
-    .config("spark.sql.streaming.statefulOperator.checkCorrectness.enabled", "false") \
-    .config("spark.submit.deployMode", DEPLOY_MODE) \
-    .getOrCreate()
-logging.info("Spark Session created")
+
+if DEPLOY_MODE == "client":
+    spark = SparkSession.builder \
+        .appName("InteractionsAggregator") \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
+        .config("spark.submit.deployMode", DEPLOY_MODE) \
+        .getOrCreate()
+    logging.info("Spark Session created")
+elif DEPLOY_MODE == "cluster":
+    spark = SparkSession.builder \
+        .appName("InteractionsAggregator") \
+        .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0") \
+        .master(SPARK_MASTER_URL) \
+        .getOrCreate()
+    logging.info("Spark Session created")
+else:
+    logging.error("Invalid DEPLOY_MODE! Use 'client' or 'cluster'")
+    exit(1)
 
 
 # Read from Kafka
