@@ -101,7 +101,7 @@ services:
     networks:
       - avroic
     deploy:
-      replicas: 2
+      replicas: 1
 
   elasticsearch:
     container_name: elasticsearch
